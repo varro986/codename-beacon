@@ -27,7 +27,16 @@ None yet. Nothing depends on Beacon.
 
 ```
 codename-beacon/
-\-- README.md         what the project is
+|-- README.md         what the project is
+|-- AGENTS.md         rules for coding assistants: common rules, then the product's own
+|-- CLAUDE.md         shell for Claude Code (@AGENTS.md)
+|-- CONTRIBUTING.md   how to contribute (specs first, GitHub Flow)
+|-- LICENSE           MIT
+|-- specs/            ideas and open questions; requirements, features and decisions as they come
+|-- .githooks/        pre-commit: gitleaks on staged files
+|-- .github/          CI: gitleaks on push and pull request
+|-- .gitleaks.toml    secret scan rules
+\-- .gitignore
 ```
 
 ## Rules
@@ -44,4 +53,3 @@ Nothing yet.
 
 - Choose the stack (PowerShell 7, like the script it comes from, or C#) and record why.
 - List the checks of the first version and the report format.
-- Add `AGENTS.md`, `CLAUDE.md`, `.gitignore`, gitleaks (config, pre-commit, CI) and a license.

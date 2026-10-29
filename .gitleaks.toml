@@ -1,0 +1,4 @@
+title = "codename-beacon"
+
+[extend]
+useDefault = true
