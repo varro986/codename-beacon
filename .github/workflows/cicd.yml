@@ -1,0 +1,19 @@
+name: cicd
+on: [pull_request]
+
+# read-only: the job only reads the repository
+permissions:
+  contents: read
+
+jobs:
+  # The same cicd/run.ps1 as on the machine, on both operating systems Beacon targets.
+  checks:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: cicd/run.ps1
+        shell: pwsh
+        run: ./cicd/run.ps1 -InstallTools

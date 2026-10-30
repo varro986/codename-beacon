@@ -34,9 +34,41 @@ Written first, by the orchestrator; no executor changes them.
   optional `Proxy`. Secrets only as `SecretEnv = 'NAME'`.
 - **Result**: JSON Schema (2020-12) `contracts/result.schema.json` and example `contracts/result.example.json`, the
   fields of ADR 0003.
-- **Check**: every check is a pair. `Invoke-Beacon<Check>Probe` does the network I/O and returns raw facts.
-  `Get-Beacon<Check>Outcome` is pure: facts + expected outcome + defaults -> record `{ check, status, detail,
-  durationMs, data }`. Tests drive the pure half with facts, the probe half against local listeners.
+- **Chain per target**: DNS once on the host; route once to the first resolved address (informs, never stops); a
+  port check per port, ranges expanded (at most `MaxPortsPerTarget`, else an input error: Beacon does not scan); for
+  each URL, TLS when it is `https` and then HTTP, run only if the URL's port opened (added to the ports when not
+  listed). A failure marks every later check of the same target, or of the same URL, `SKIP` with the reason. Targets
+  run one after the other, in the order of the matrix sorted by group and name.
+- **Shared helpers** (`Private/Common.ps1`, T0): `Get-BeaconConfig` (defaults, environment overrides),
+  `New-BeaconCheckRecord -Check -Subject -Status -Detail -DurationMs [-Data]` (the record of the schema without
+  `group` and `target`, which the chain adds), `New-BeaconInputError -Message` (an `ErrorRecord` with id
+  `BeaconInput`: exit code 2).
+- **Check**: every check is a pair. A probe does the network I/O and returns raw facts; a pure outcome function turns
+  facts + expected outcome + config into a record. Tests drive the pure half with facts, the probe half against local
+  listeners (`TcpListener`, `HttpListener`, an `SslStream` server with a certificate made in the test). The chain calls
+  only the entry of each check:
+
+  | Task | Entry | Returns |
+  |---|---|---|
+  | T3 | `Invoke-BeaconDnsCheck -HostName <string> [-ExpectedAddresses <string[]>] -Config` | one record; `data.addresses`, `data.servers` (from `NetworkInterface` DNS addresses) |
+  | T4 | `Invoke-BeaconRouteCheck -Address <string> -Config` | one record, `INFO` or `SKIP`; `data.hops`, `data.lastAnswering`, `data.method` |
+  | T5 | `Invoke-BeaconPortCheck -Address <string> -Port <int> -Config` | one record; `data.reason` (`refused`, `timeout`, `unreachable`), `data.sourceAddress` |
+  | T6 | `Invoke-BeaconTlsCheck -HostName <string> -Address <string> -Port <int> -Config` | one record; `data.subject`, `data.issuer`, `data.notAfter`, `data.errors` |
+  | T7 | `Invoke-BeaconHttpCheck -Url <string> [-MatrixProxy <string>] [-ExpectedStatus <int[]>] -Config` | one record; `data.status`, `data.proxy` (URL or `direct`), `data.location`, `data.expected` |
+
+- **Matrix** (T2): `Read-BeaconMatrix -Path` returns the data file or throws a `BeaconInput` error naming the entry
+  (for example `Environments.test.Groups.web.Targets[1]: Host is missing`). `Get-BeaconTargets -Matrix -Environment`
+  returns `@{ Proxy; Targets = @(@{ Group; Name; Host; ExpectedAddresses; Ports <int[]>; Urls; ExpectedStatus <int[]>;
+  SecretEnv }) }`, ports expanded and sorted.
+- **Chain and result** (T8): `Invoke-BeaconChain -Target <from Get-BeaconTargets> [-MatrixProxy] -Config` returns the
+  target's records with `group` and `target`. `New-BeaconRun -Environment -Config` writes the result file at once with
+  `complete = false`; `Add-BeaconRecords` and `Complete-BeaconRun` rewrite it (write only if different, atomic: temp
+  file then move). The run folder is `<RunsFolder>/<yyyyMMdd_HHmmss>/result.json`.
+- **Report** (T9): `Get-BeaconTotals -Result` (pure: totals per status, per group and per target, `INFO` excluded) and
+  `Write-BeaconReport -Result` (the coloured table on the console).
+- **Decisions of the owner (30/10)**: route TCP, then ICMP, then `SKIP`; proxy from the matrix, then the environment
+  variables; TLS against the system trust store only, an own CA is an open question; exit codes 0 / 1 / 2; `GET` only,
+  redirects not followed, at most `Http.PreviewChars` of the body in the detail when not `OK`.
 
 ## Risks
 
@@ -47,13 +79,15 @@ Written first, by the orchestrator; no executor changes them.
   run on both in CI.
 - **NTLM** (ADR 0002): not needed here (no authentication in this feature); verified with the feature that brings
   IDEA-14.
-- **Proxy**: an explicit proxy from the matrix only; reading the system proxy differs by OS and waits.
+- **Proxy**: the system proxy (Windows settings, PAC) is not read: it differs by OS.
+- **Local tests and DNS**: the "does not resolve" test uses a name under `.invalid` (RFC 6761); a resolver that
+  answers for every name breaks it, and the test then says so.
 
 ## Tasks
 
 | Id | Files touched | Depends on | Role | Done when |
 |---|---|---|---|---|
-| T0 | `contracts/*`, `src/Beacon/Beacon.ps*1`, `config/defaults.psd1`, `cicd/run.ps1`, `AGENTS.md` (Verification) | - | Orchestrator | `cicd/run.ps1` passes on the empty module and validates the examples |
+| T0 | `contracts/*`, `src/Beacon/Beacon.ps*1`, `config/defaults.psd1`, `Private/Common.ps1`, `cicd/*`, `.github/workflows/cicd.yml`, `tests/Contracts.Tests.ps1`, `AGENTS.md` (Verification) | - | Orchestrator | `cicd/run.ps1` passes on the empty module and validates the examples |
 | T1 | `tests/spikes/Route.Spike.ps1`, this plan (Risks) | - | Executor | the route method is chosen and written here, tried on Windows and Linux |
 | T2 | `Private/Matrix.ps1`, `tests/Matrix.Tests.ps1` | T0 | Executor | criteria "several environments" and "matrix not valid" pass |
 | T3 | `Private/Checks/Dns.ps1`, `tests/Dns.Tests.ps1` | T0 | Executor | criteria "does not resolve" and "other address" pass |
@@ -67,3 +101,4 @@ Written first, by the orchestrator; no executor changes them.
 | T11 | - | T10 | Reviewer | the diff checked against spec.md, `cicd/run.ps1` green |
 
 T1-T9 touch different files: after T0 they run in parallel, one executor each in its own worktree (T4 waits for T1).
+A value an executor needs and does not find in `config/defaults.psd1` is reported, not added: the orchestrator adds it.

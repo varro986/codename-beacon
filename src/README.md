@@ -1,3 +1,4 @@
 # src
 
-The product's source code, one folder per module as described in `specs/architecture.md`.
+The PowerShell module `Beacon` and its command line entry; layout and contracts in
+`specs/features/001-diagnostic-chain/plan.md`.

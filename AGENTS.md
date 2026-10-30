@@ -306,4 +306,7 @@ None yet beyond the common rules. What the product is: `README.md`; what it must
 
 ## Verification
 
-Commands the orchestrator runs before a commit: none yet (no code). They are added here with the first code.
+Commands the orchestrator runs before a commit:
+
+- `pwsh -NoProfile -File cicd/run.ps1`: lint and all tests (steps in `cicd/README.md`).
+- One test file: `Invoke-Pester -Path tests/<Name>.Tests.ps1 -Output Detailed`.

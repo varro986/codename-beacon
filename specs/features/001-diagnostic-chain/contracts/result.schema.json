@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Beacon run result",
+  "description": "One file per run (ADR 0003): the run and one record per check.",
+  "type": "object",
+  "required": ["schemaVersion", "run", "checks"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "run": {
+      "type": "object",
+      "required": ["startedAt", "endedAt", "complete", "environment", "beaconVersion", "egress"],
+      "additionalProperties": false,
+      "properties": {
+        "egress": {
+          "type": "object",
+          "description": "Where the run comes from (IDEA-12, local data); source addresses are in each port record.",
+          "required": ["hostName"],
+          "additionalProperties": false,
+          "properties": { "hostName": { "type": "string" } }
+        },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "endedAt": { "type": ["string", "null"], "format": "date-time" },
+        "complete": { "type": "boolean", "description": "False when the run did not reach its end." },
+        "environment": { "type": ["string", "null"], "description": "Null for a single target from the command line." },
+        "beaconVersion": { "type": "string" }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["group", "target", "check", "subject", "status", "detail", "durationMs"],
+        "additionalProperties": false,
+        "properties": {
+          "group": { "type": ["string", "null"] },
+          "target": { "type": "string" },
+          "check": { "enum": ["dns", "route", "port", "tls", "http"] },
+          "subject": { "type": "string", "description": "What was tested: the host, a port or a URL." },
+          "status": { "enum": ["OK", "WARN", "FAIL", "SKIP", "INFO"] },
+          "detail": { "type": "string", "description": "What happened and, when not OK, what to do." },
+          "durationMs": { "type": "integer", "minimum": 0 },
+          "data": { "type": "object", "description": "Facts of the check, its own shape per check." }
+        }
+      }
+    }
+  }
+}

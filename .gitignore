@@ -12,6 +12,7 @@ secrets.env
 # Real data: never in the repo (synthetic data only, in tests)
 data/
 exports/
+beacon-runs/
 
 # OS and editors
 Thumbs.db
