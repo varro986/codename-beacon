@@ -1,7 +1,7 @@
 # Brainstorming
 
-Ideas and doubts before anything is decided. An idea becomes work only with the owner's yes; it is never deleted, only
-its status changes.
+Ideas and doubts waiting for a decision. An accepted idea leaves this file for its target; only proposed and rejected
+ideas stay.
 
 ## Ideas
 
@@ -16,9 +16,13 @@ its status changes.
 | IDEA-7 | 30/10 | Excel is the lasting format: tools read spreadsheets and always export to spreadsheets, freely readable per project; SQLite or similar only as a temporary store. (voice note 30/10) | proposed |
 | IDEA-8 | 30/10 | The graphical reconstruction of the network maps is a key output. (voice note 30/10) | proposed |
 
+Last id: IDEA-8
+
 ## Open questions
 
 - Web interface or desktop app? The README still has the stack open (PowerShell 7 or C#). (voice note 30/10)
 - Which tests make the first version (trace, ports, DNS, TLS...)? (voice note 30/10)
 - Is the map meant to cross organisations (paths that leave one network and enter another)? (voice note 30/10)
 - The scripts, tests and knowledge collected so far: the owner will share them, to extract implicit requirements into this brainstorming. (voice note 30/10)
+- Which stack: PowerShell 7, like the script it comes from, or C#? To record as an ADR. (README, To do)
+- Which checks make the first version, and which report format? (README, To do)

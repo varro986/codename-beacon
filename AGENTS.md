@@ -21,7 +21,40 @@ exception next to the rule it breaks, with the reason. Rules of a single project
   similar files only import them; skills, agents, commands and hooks of a tool never add rules of their own.
 - Whatever must always hold (secrets, style, tests) also runs without AI, in pre-commit and in CI, with the same rules
   as the local hooks.
-- Nothing useful lives only in a tool's memory: it goes into the repository.
+- **Context lives in the repository, never in a session, a machine or a tool's memory**: work moves between machines
+  and sessions, so the state of the work is written where every session finds it: the project's files
+  (`brainstorming.md`, the tasks of a plan, the README) and the owner's backlog for the direction. A session ends by
+  writing that state. An assistant's own memory keeps only personal preferences; a rule that holds for a repository
+  goes into its `AGENTS.md` or the norm.
+
+### Behaviour
+
+How every assistant works, in every project. The block between the markers is also, word for word, the instruction
+the owner gives to chat assistants.
+
+<!-- BEGIN behaviour -->
+- **Replies**: in the owner's language unless asked otherwise; dry and direct. Long answers: a one-line summary first,
+  then bullet points. Short answers: direct, no recap.
+- **Facts**: numbers, standards, dates, health and money from authoritative sources, cited. When unsure, say so;
+  keep facts apart from assessments; never invent.
+- **Red team on ideas and decisions**: never complacent. Point out the main flaws and for each one a countermeasure
+  or a workable alternative; take the weak version apart to build a stronger one. Operational requests (write, fix,
+  translate, summarise) are simply carried out.
+- **Ambiguity**: one question before answering.
+<!-- END behaviour -->
+- **Re-entering a project**: the first step is checking that it is aligned with the current norm (the guardian's
+  deterministic checks) and reading the guardian's report next to the brainstorming; a change of the norm and the
+  report's findings come before new work.
+
+### The guardian's report
+
+Next to `brainstorming.md`, a project may have the guardian's report (the file name is in the guardian's data): the
+findings of the last review of that project, as a table `File | Problem | Choice`, most severe first, in the
+project's language. Every finding is something out of place, and the owner has two choices: **integrate** it into
+the norm (it is better than the norm: the norm grows and spreads it) or **rectify** it (the project goes back to the
+norm); the guardian recommends one and says why. The guardian writes the report; the project's session reads it on
+re-entering, applies the owner's choice, and removes each finding once settled. An empty report is deleted: git keeps
+the history.
 
 ### Language
 
@@ -41,6 +74,23 @@ exception next to the rule it breaks, with the reason. Rules of a single project
 - Least privilege everywhere: every account, service or command has only the permissions it needs (one database and
   account per project, read-only where enough).
 
+### Permissions of coding assistants
+
+Written once, in the repository's `.claude/settings.json` (under git, the same in every repository of a kind, checked
+by the guardian); personal settings of a machine hold nothing else than what is personal. Roles as in "Working with
+agents".
+
+| Action | Orchestrator | Executor | Microtask | Reviewer |
+|---|---|---|---|---|
+| Read the repository | yes | yes | yes | yes |
+| Read secrets (`*.env` with values, password manager exports, keys, `gh auth token`) | never | never | never | never |
+| Edit inside the repository | yes | only its task's files, in its worktree | no | no |
+| Edit outside the repository | only the places the repository's `AGENTS.md` names | no | no | no |
+| Run tests and tools | yes | yes | read-only tools | yes |
+| Commit on its own branch or worktree | yes, freely | never | never | never |
+| Commit on `main`, push, merge, open or merge a pull request | only when the owner orders it, confirmed each time | never | never | never |
+| Destructive commands (force push, hard reset, clean, recursive delete) | never | never | never | never |
+
 ### Code
 
 - **Values in one place**: no numbers, times, paths or thresholds hard-coded; configuration holds them. A path or value
@@ -49,24 +99,38 @@ exception next to the rule it breaks, with the reason. Rules of a single project
   calls or queries, scans where a map is enough, queries without a time filter); the simplest form that does the job,
   no abstraction for a single use. Comments useful but minimal: only the non-obvious why, constraints, edge cases;
   never history dates.
-- **Tested locally first**: every project has a `cicd/` folder with its deterministic checks (tests, syntax, alignment
-  with configuration), run on the machine before every push by one shared runner; the remote CI repeats the same steps
-  and stays minimal (secrets scan on every push, the rest only when needed), so it never drifts from the local one.
+- **Tested locally first**: every project with code has a `cicd/` folder with its deterministic checks (tests, syntax,
+  alignment with configuration), run on the machine before every push by one shared runner. The remote CI runs the same
+  steps, never different ones, and only what one of these needs: a guard that must hold even if a machine is wrong (the
+  secrets scan on every push; the merge gate of a protected `main`), something the machines cannot do (another
+  operating system), or what costs nothing and takes little. Never remote: checks whose rules are private, secrets,
+  long jobs where minutes are paid.
 - **Testable**: logic in small pure functions, I/O at the edges; a test for every important behaviour (writes,
   idempotence, secrets) and for every fixed bug. Formats exchanged between projects have an example tested by both the
   writer and the reader.
-- **Design patterns where they help** (layers, adapters, configuration-driven behaviour), without over-engineering.
-- **Reuse**: use what already exists; duplicated code goes to a common place.
+- **Design patterns where they help** (layers, adapters, configuration-driven behaviour), without over-engineering:
+  code is mostly written by machines, and well-known patterns are how the owner reads and verifies it.
+- **Observable**: every run leaves a result (what it did, counts, outcome) and logs that say what happened; an error is
+  always visible and says what to do.
+- **Reuse**: use what already exists; duplicated code goes to a common place. Code useful to more than one project is
+  a candidate for the shared product, the base of all the owner's technology (its name in the guardian's data).
 - **PowerShell 7 (pwsh) everywhere**, the same on Windows and Linux; the only exception is a Windows first-run script,
   compatible with Windows PowerShell 5.1, which installs pwsh and stops. No absolute machine paths in scripts (relative
   to the script or from `$HOME`), no Windows-only commands without the alternative next to them.
 - No new feature without the owner's yes: ideas are proposals.
 
-### Coherence
+### Coherence and consistency
 
-- **One system**: projects are parts of one coherent whole; the same thing is done the same way everywhere (dry run
-  and apply, results and logs, messages that say what to do, names, README structure). A new solution in one project
-  holds for all of them, or the reason why not is written.
+- **Consistency, the form**: the same thing has the same shape everywhere: names (written the same way, renamed
+  everywhere in one change), README sections, statuses of ideas, file and folder names, formats, commands and their
+  options (dry run and apply), results, logs and messages that say what to do. What can be checked by a tool is
+  checked by a tool.
+- **Coherence, the substance**: no two places say different things. Every fact has one source; the other places link
+  to it instead of repeating it. A contradiction (README against code, configuration against documentation, a
+  brainstorming against its README, one project against another) is a finding: it is settled at the source, or written
+  as an open question until the owner decides.
+- **One system**: projects are parts of one coherent whole; the same thing is done the same way everywhere. A new
+  solution in one project holds for all of them, or the reason why not is written.
 - **In the same change**: every code change updates README, configuration and tests together.
 - **One project per session**: a session declares at the start which project it works on, stays in its folder and asks
   before touching another project; changes that span projects are declared as such.
@@ -75,11 +139,25 @@ exception next to the rule it breaks, with the reason. Rules of a single project
 
 ### Brainstorming
 
-Every project has one `brainstorming.md`: where ideas and doubts land before anything is decided. Two sections:
+Every project has one `brainstorming.md`: where ideas and doubts wait for a decision, and only those. Two sections:
 
-- **Ideas**: a table `Id | Date | Idea | Status`, one idea per row (`IDEA-n`, the date of origin, status proposed,
-  accepted or rejected). An idea becomes work only with the owner's yes; it is never deleted, only its status changes.
+- **Ideas**: a table `Id | Date | Idea | Status`, one idea per row (`IDEA-n`, the date of origin). Ids are never
+  reused: a line `Last id: IDEA-n` under the table keeps the highest one ever given.
 - **Open questions**: doubts and contradictions to settle before deciding, one per line, with their date of origin.
+
+Brainstorming converges and empties: a session on a project starts from it, asks the owner every open question and
+every proposed idea at once, each with a recommendation, so that what is left to development is already decided. What
+gets decided leaves the file and lives in one place only:
+
+- **accepted**: the idea moves to its target (a feature whose `spec.md` cites `IDEA-n`, an ADR, a README section, the
+  norm, another project's brainstorming, the backlog) and its row is removed; git keeps its history.
+- **answered**: the answer goes where it belongs and the question is removed.
+- What stays has one of two statuses (in an Italian repository: proposta, scartata): `proposed` (still to examine, or
+  waiting for something) or `rejected: <reason>` (kept, so the same idea is not proposed again). An idea that repeats
+  another is folded into it.
+
+A `proposed` idea or an open question left without an answer for long is a finding of the guardian: it is brought to
+the owner, not left to age.
 
 What reaches it is already clean: no personal data, customer data or employer data, whatever the repository.
 
@@ -100,8 +178,9 @@ What reaches it is already clean: no personal data, customer data or employer da
 
 ### README
 
-Sections with these names and in this order; a section that is not needed is omitted, never renamed. The first five
-say what the project is, the others how to work on it; the project's own sections go between Usage and Contributing.
+Five fixed sections say what the project is; five more, only when needed, say how to work on it. Names and order as
+here; a section is omitted, never renamed. What would be a list of ideas or things to do goes to `brainstorming.md`,
+not to the README.
 
 1. `# <Name>` and one line: what it is.
 2. Goal: why it exists, what problem it solves, for whom (1-3 lines).
@@ -109,17 +188,16 @@ say what the project is, the others how to work on it; the project's own section
 4. Technologies: languages, runtimes, services, main versions; for anything not C#, bash or PowerShell, the reason.
 5. Dependencies: table `From | What it uses | Type` (project, library, service, machine), or "None"; also who depends
    on this project.
-6. Architecture: the folder tree (code block, one line per entry), components and flows; a mermaid diagram only if
-   needed.
-7. Rules: the project's own.
-8. Installation (only if something is installed). 9. Usage (only if it is run). 10. The project's own sections.
-11. Contributing: change, test, ship (only if there is code). 12. Tests: exact commands and what they cover.
-13. Agents: what can run in parallel and who does it, contracts not to touch, the orchestrator's checks, what stays
-    with the owner. 14. Miscellaneous: always present ("Nothing yet." is fine). 15. To do (only if needed).
+6. Architecture (when needed): the folder tree (code block, one line per entry), components and flows; a mermaid
+   diagram only if needed.
+7. Rules (when needed): the project's own.
+8. Usage (when it is installed or run): installation, commands, how to change and ship.
+9. Tests (when there is code): the `cicd/` steps and how to run them.
+10. Agents (when work is split): what runs in parallel and who does it, contracts not to touch, what stays with the
+    owner.
 
 A repository documented in Italian uses the same sections with Italian titles (Obiettivo, Descrizione, Tecnologie,
-Dipendenze, Architettura, Regole del progetto, Installazione, Uso, Come intervenire, Prove, Agenti, Miscellanea, Da
-fare).
+Dipendenze, Architettura, Regole del progetto, Uso, Prove, Agenti).
 
 ### Working with agents
 
@@ -141,6 +219,11 @@ Roles are by model tier, so they hold with any assistant; the "today" column is 
 - A new agent's prompt says everything (files to read, boundaries, what to report): it does not see the conversation.
 - Every agent reports files changed, tests written or run and doubts; never "done" without saying what was verified.
 - Small jobs are done, not delegated. Real data and production: the agent prepares, the owner approves and ships.
+- **Unsupervised work**: the owner decides first (a converged brainstorming, criteria as tests), then the machine works
+  alone on its own branch. A missing decision is never guessed: it becomes an open question in `brainstorming.md`, the
+  owner is notified, and the work moves to a task that does not depend on it. A session has a limit (tasks or time) and
+  stops when the same check fails twice in a row. It ends with a report: tasks done, checks run, open questions; the
+  owner reads that, not the session, and orders push and merge.
 <!-- END common rules -->
 
 <!-- BEGIN product rules: maintained centrally and copied identical into every product; do not edit here -->
@@ -165,9 +248,9 @@ What holds for every product, on top of the common rules.
 
 ### Spec driven development
 
-The product is built from its specs, following the GitHub Spec Kit model: constitution (`AGENTS.md`), spec, plan,
-tasks, implementation. The layout below is the required skeleton; entries marked `(when needed)` and names with `NNN`
-are added as the work requires them.
+The product is built from its specs, on a reduced GitHub Spec Kit model: constitution (`AGENTS.md`), spec, plan with
+its tasks, implementation. The README is the vision. The layout below is the required skeleton; entries marked
+`(when needed)` and names with `NNN` are added as the work requires them.
 
 ```
 |-- README.md, AGENTS.md, CLAUDE.md, CONTRIBUTING.md, LICENSE, SECURITY.md, CODE_OF_CONDUCT.md
@@ -175,23 +258,23 @@ are added as the work requires them.
 |-- .githooks/
 |   \-- pre-commit               gitleaks on staged files
 |-- .github/
-|   |-- workflows/               CI: gitleaks, then build and tests
+|   |-- workflows/               CI: gitleaks, then the cicd/ steps on pull requests
 |   |-- ISSUE_TEMPLATE/          bug report and idea forms
 |   |-- pull_request_template.md
 |   \-- dependabot.yml           updates of dependencies and GitHub Actions
-|-- .claude/agents/              executor.md, reviewer.md, microtask.md: model and tools only (when needed)
+|-- .claude/
+|   |-- settings.json            permissions of coding assistants (common rules, "Permissions")
+|   \-- agents/                  executor.md, reviewer.md, microtask.md: model and tools only (when needed)
 |-- specs/
 |   |-- brainstorming.md
-|   |-- vision.md, glossary.md   (when needed)
-|   |-- requirements.md          REQ-F / REQ-NF, ISO 25010 (when needed)
-|   |-- architecture.md          reduced arc42 + C4 (when needed)
-|   |-- decisions/               ADRs (Nygard), never edited: a changed decision is a new ADR
+|   |-- architecture.md          reduced arc42 + C4, quality goals, glossary (when needed)
+|   |-- decisions/               ADRs (Nygard), never edited: a changed decision is a new ADR (when needed)
 |   |   \-- NNNN-title.md
 |   \-- features/                one folder per feature: the unit of work
 |       \-- NNN-name/
-|           |-- spec.md          stories and Given/When/Then criteria (what)
-|           |-- plan.md          how: components, contracts and interfaces it touches, risks
-|           \-- tasks.md         tasks: id, files touched, depends on, role, "done when"
+|           |-- spec.md          the idea it comes from, stories and Given/When/Then criteria (what)
+|           \-- plan.md          how: components, contracts, risks; then the tasks table: id, files touched,
+|                                depends on, role, "done when"
 |-- cicd/                        the product's local checks, run before every push (common rules, "Code")
 |-- src/
 |-- tests/
@@ -200,11 +283,12 @@ are added as the work requires them.
 
 - `specs/brainstorming.md` is the product's brainstorming (common rules, "Brainstorming") while only the owner works
   on the product; with contributors, GitHub Issues take the place of its ideas.
-- An idea becomes a requirement only with the owner's yes. Traceability: an accepted idea becomes a REQ, the REQ cites
-  the features and ADRs that implement it; "done when" points to the Given/When/Then criteria, so it is a passing test.
+- An idea becomes work only with the owner's yes: it becomes a feature whose `spec.md` cites it (`IDEA-n`) and leaves
+  `brainstorming.md` (common rules, "Brainstorming"). "Done when" points to the Given/When/Then criteria, so it is a
+  passing test.
 - A file is added when it is needed, not before. The README stays short and points to `specs/`.
 
-### Parallel work from tasks.md
+### Parallel work from the tasks
 
 - Tasks are written to be parallel: each declares the files it touches and what it depends on. Two tasks with no
   shared files and no open dependencies run together, one executor each in its own worktree.

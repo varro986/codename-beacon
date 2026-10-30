@@ -34,8 +34,8 @@ codename-beacon/
 |-- LICENSE           MIT
 |-- SECURITY.md       how to report a vulnerability
 |-- CODE_OF_CONDUCT.md
-|-- specs/            brainstorming.md; requirements, architecture and the rest as they come
-|   |-- features/     one folder per feature: spec.md, plan.md, tasks.md
+|-- specs/            brainstorming.md; architecture as it comes
+|   |-- features/     one folder per feature: spec.md, plan.md with its tasks
 |   \-- decisions/    ADRs
 |-- src/              source code
 |-- tests/            tests, from the acceptance criteria
@@ -53,11 +53,3 @@ codename-beacon/
   use case.
 - **Read-only**: Beacon observes and reports; it never changes network or system settings.
 
-## Miscellaneous
-
-Nothing yet.
-
-## To do
-
-- Choose the stack (PowerShell 7, like the script it comes from, or C#) and record why.
-- List the checks of the first version and the report format.
