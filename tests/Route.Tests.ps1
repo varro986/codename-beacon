@@ -84,7 +84,7 @@ Describe 'Get-BeaconRouteOutcome on systems without hop addresses' {
 
 Describe 'Invoke-BeaconRouteCheck' {
     BeforeAll {
-        $script:config = @{ Route = @{ MaxHops = 5; HopTimeoutSeconds = 2; PingBufferBytes = 32 } }
+        $script:config = @{ Route = @{ MaxHops = 5; HopTimeoutSeconds = 2 } }
     }
 
     It 'reaches loopback in one hop, or skips with a reason where ping is not permitted' {
@@ -103,10 +103,4 @@ Describe 'Invoke-BeaconRouteCheck' {
         }
     }
 
-    It 'takes the ping buffer size from the configuration' {
-        $config = @{ Route = @{ MaxHops = 1; HopTimeoutSeconds = 2; PingBufferBytes = 16 } }
-        $facts = Get-BeaconRouteFact -Address '127.0.0.1' -Config $config
-        $facts.error | Should -BeNullOrEmpty
-        $facts.hops.Count | Should -Be 1
-    }
 }

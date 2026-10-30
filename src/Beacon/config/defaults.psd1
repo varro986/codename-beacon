@@ -9,7 +9,6 @@
     Route               = @{
         MaxHops           = 15
         HopTimeoutSeconds = 2
-        PingBufferBytes   = 32
     }
     # Beacon tests the declared ports, it does not scan: a longer range is an input error.
     MaxPortsPerTarget   = 32

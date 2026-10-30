@@ -68,3 +68,5 @@ if ($failed.Count) {
     exit 1
 }
 Write-Host "cicd OK: lint clean, $($result.PassedCount) tests passed" -ForegroundColor Green
+# Explicit: the CI shell otherwise ends with the last native exit code (the end-to-end tests leave 1 or 2).
+exit 0

@@ -59,7 +59,9 @@ function Get-BeaconRouteFact {
     $facts = @{ hops = [System.Collections.Generic.List[string]]::new(); replies = 0; unreachable = $null; reached = $false; error = $null; durationMs = 0; method = 'icmp' }
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $ip = [System.Net.IPAddress]::Parse($Address)
-    $payload = [byte[]]::new($Config.Route.PingBufferBytes)
+    # 32 bytes, the size of the system ping: without privileges, .NET on Linux falls back to the ping utility,
+    # which refuses any other payload. A constraint of the platform, not a setting.
+    $payload = [byte[]]::new(32)
     $ping = [System.Net.NetworkInformation.Ping]::new()
     try {
         for ($ttl = 1; $ttl -le $maxHops; $ttl++) {
