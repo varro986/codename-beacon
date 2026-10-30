@@ -69,7 +69,7 @@ pwsh -NoProfile -File src/beacon.ps1 -Target portal.example.com -Port 443 -Url h
 
 - The matrix: [example](specs/features/001-diagnostic-chain/contracts/matrix.example.psd1); what each check does:
   [spec](specs/features/001-diagnostic-chain/spec.md).
-- Every run writes `beacon-runs/<yyyyMMdd_HHmmss>/result.json` under the working directory (`BEACON_RUNS` moves it)
+- Every run writes `beacon-runs/<yyyyMMdd_HHmmss>/` with `result.json` and `run.log` under the working directory (`BEACON_RUNS` moves it)
   and shows the table on the console; `-Quiet` hides the table.
 - Exit code: 0 no check failed, 1 at least one failed, 2 matrix or parameters not valid.
 
