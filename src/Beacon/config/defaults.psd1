@@ -9,6 +9,7 @@
     Route               = @{
         MaxHops           = 15
         HopTimeoutSeconds = 2
+        PingBufferBytes   = 32
     }
     # Beacon tests the declared ports, it does not scan: a longer range is an input error.
     MaxPortsPerTarget   = 32
@@ -18,8 +19,11 @@
         WarnClasses  = @(4, 5)
         # Characters of the body shown in the detail when the answer is not OK.
         PreviewChars = 300
-        # Through a proxy, a plain http answer with one of these statuses is read as the proxy blocking.
-        ProxyRejectStatuses = @(403)
+    }
+    # Console table: total width and the widest subject; longer details wrap, never cut.
+    Report              = @{
+        Width        = 120
+        SubjectChars = 40
     }
     # Run folders go here, relative to the working directory; BEACON_RUNS overrides it.
     RunsFolder          = 'beacon-runs'
