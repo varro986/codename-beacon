@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "run": {
+    "startedAt": "2026-10-30T09:00:00+01:00",
+    "endedAt": "2026-10-30T09:00:41+01:00",
+    "complete": true,
+    "environment": "test",
+    "beaconVersion": "0.1.0",
+    "egress": { "hostName": "probe-01" }
+  },
+  "checks": [
+    { "group": "web", "target": "portal", "check": "dns", "subject": "portal.example.com", "status": "OK", "detail": "Resolved to 192.0.2.10, as expected.", "durationMs": 12, "data": { "addresses": ["192.0.2.10"], "servers": ["10.0.0.2"] } },
+    { "group": "web", "target": "portal", "check": "route", "subject": "192.0.2.10", "status": "INFO", "detail": "Reached in 4 hops.", "durationMs": 3120, "data": { "hops": ["198.51.100.1", "198.51.100.9", "203.0.113.5", "192.0.2.10"], "lastAnswering": "192.0.2.10", "method": "tcp" } },
+    { "group": "web", "target": "portal", "check": "port", "subject": "443", "status": "OK", "detail": "TCP connection opened from 10.0.0.15.", "durationMs": 18, "data": { "sourceAddress": "10.0.0.15" } },
+    { "group": "web", "target": "portal", "check": "tls", "subject": "https://portal.example.com/health", "status": "OK", "detail": "Certificate valid for portal.example.com until 2027-03-01.", "durationMs": 64, "data": { "subject": "CN=portal.example.com", "notAfter": "2027-03-01T00:00:00Z" } },
+    { "group": "web", "target": "portal", "check": "http", "subject": "https://portal.example.com/health", "status": "OK", "detail": "200 OK through the proxy.", "durationMs": 140, "data": { "status": 200, "proxy": "http://proxy.example.net:8080" } },
+    { "group": "web", "target": "api", "check": "dns", "subject": "api.example.com", "status": "OK", "detail": "Resolved to 192.0.2.20.", "durationMs": 9, "data": { "addresses": ["192.0.2.20"], "servers": ["10.0.0.2"] } },
+    { "group": "web", "target": "api", "check": "route", "subject": "192.0.2.20", "status": "INFO", "detail": "No answer after hop 2 (203.0.113.5): trace packets dropped or filtered.", "durationMs": 30050, "data": { "hops": ["198.51.100.1", "203.0.113.5", "*", "*"], "lastAnswering": "203.0.113.5", "method": "tcp" } },
+    { "group": "web", "target": "api", "check": "port", "subject": "443", "status": "OK", "detail": "TCP connection opened from 10.0.0.15.", "durationMs": 21, "data": { "sourceAddress": "10.0.0.15" } },
+    { "group": "web", "target": "api", "check": "port", "subject": "8443", "status": "FAIL", "detail": "Timed out after 5 s: filtered, likely a firewall. Last hop that answered: 203.0.113.5.", "durationMs": 5003, "data": { "reason": "timeout", "sourceAddress": "10.0.0.15" } },
+    { "group": "web", "target": "api", "check": "port", "subject": "8444", "status": "FAIL", "detail": "Refused: the host answered, nothing listens on this port.", "durationMs": 3, "data": { "reason": "refused", "sourceAddress": "10.0.0.15" } },
+    { "group": "web", "target": "api", "check": "tls", "subject": "https://api.example.com/v1/items", "status": "OK", "detail": "Certificate valid for api.example.com until 2027-01-15.", "durationMs": 58, "data": { "subject": "CN=api.example.com", "notAfter": "2027-01-15T00:00:00Z" } },
+    { "group": "web", "target": "api", "check": "http", "subject": "https://api.example.com/v1/items", "status": "OK", "detail": "401 Unauthorized, as expected: the route is open.", "durationMs": 97, "data": { "status": 401, "expected": [401], "proxy": "http://proxy.example.net:8080" } },
+    { "group": "legacy", "target": "archive", "check": "dns", "subject": "archive.example.org", "status": "FAIL", "detail": "Name not found (NXDOMAIN) by 10.0.0.2 (system resolver): check the name, or the DNS zone it belongs to.", "durationMs": 31, "data": { "error": "NXDOMAIN", "servers": ["10.0.0.2"] } },
+    { "group": "legacy", "target": "archive", "check": "route", "subject": "archive.example.org", "status": "SKIP", "detail": "Not run: DNS failed.", "durationMs": 0 },
+    { "group": "legacy", "target": "archive", "check": "port", "subject": "80", "status": "SKIP", "detail": "Not run: DNS failed.", "durationMs": 0 }
+  ]
+}

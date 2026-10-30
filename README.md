@@ -41,11 +41,12 @@ codename-beacon/
 |-- specs/            brainstorming.md; architecture as it comes
 |   |-- features/     one folder per feature: spec.md, plan.md with its tasks
 |   \-- decisions/    ADRs
-|-- src/              source code
-|-- tests/            tests, from the acceptance criteria
+|-- cicd/             local checks run before every push: run.ps1
+|-- src/Beacon/       the PowerShell module: matrix, checks, chain, result, report
+|-- tests/            Pester tests, from the acceptance criteria
 |-- tools/            deterministic tools for agents and people
 |-- .githooks/        pre-commit: gitleaks on staged files
-|-- .github/          CI (gitleaks), issue and PR templates, Dependabot
+|-- .github/          CI (gitleaks; cicd/run.ps1 on Linux and Windows), issue and PR templates, Dependabot
 |-- .gitleaks.toml    secret scan rules
 |-- .gitignore
 \-- .editorconfig     shared editor settings
@@ -58,4 +59,9 @@ codename-beacon/
 - **Read-only by default**: Beacon observes and reports; it never changes network or system settings. A check that
   writes data (for example a test file in a storage) is off by default, enabled only by its profile, never in
   production; it asks for confirmation and always removes what it wrote.
+
+## Tests
+
+`pwsh -NoProfile -File cicd/run.ps1`: lint and Pester tests, the same steps as the remote CI
+([cicd/README.md](cicd/README.md)).
 

@@ -95,6 +95,18 @@ agents".
 | Commit on `main`, push, merge, open or merge a pull request | only when the owner orders it, confirmed each time | never | never | never |
 | Destructive commands (force push, hard reset, clean, recursive delete) | never | never | never | never |
 
+Guardrails against destroying anything outside the repository, in layers, because pattern rules alone are easy to get
+around:
+
+- **Sandbox** where the system has one: writes of shell commands only inside the repository and the temporary folders.
+- **Guard hook** on every machine, before every shell command: deletions, moves and overwrites outside the repository,
+  or inside the owner's data stores, are refused; what it cannot resolve (variables, wildcards) is asked to the owner.
+  It reads commands, not scripts: running a script outside `tools/` and `cicd/` stays a question to the owner.
+- **No escape hatches**: no permission that runs an interpreter with any argument (inline code can delete anything);
+  only the precise tests and tools.
+- **A way back**: the repository in git; the owner's data stores with server-side versions and trash.
+- The guardian checks the settings of every machine and repository against these layers.
+
 ### Code
 
 - **Values in one place**: no numbers, times, paths or thresholds hard-coded; configuration holds them. A path or value
@@ -306,4 +318,7 @@ None yet beyond the common rules. What the product is: `README.md`; what it must
 
 ## Verification
 
-Commands the orchestrator runs before a commit: none yet (no code). They are added here with the first code.
+Commands the orchestrator runs before a commit:
+
+- `pwsh -NoProfile -File cicd/run.ps1`: lint and all tests (steps in `cicd/README.md`).
+- One test file: `Invoke-Pester -Path tests/<Name>.Tests.ps1 -Output Detailed`.
