@@ -1,0 +1,19 @@
+# Brainstorming
+
+Ideas and doubts before anything is decided. An idea becomes work only with the owner's yes; it is never deleted, only
+its status changes.
+
+## Ideas
+
+| Id | Date | Idea | Status |
+|---|---|---|---|
+| IDEA-1 | 30/10 | A web interface for the network tests (to be confirmed). (voice note 30/10) | proposed |
+| IDEA-2 | 30/10 | While traces run, draw a map of the network topology and of the hops, showing where traffic opens and where it is blocked, so bottlenecks stand out (for example everything passing through one perimeter firewall). (voice note 30/10) | proposed |
+| IDEA-3 | 30/10 | Every IP on the map can be labelled with a name that is reused across runs. (voice note 30/10) | proposed |
+| IDEA-4 | 30/10 | Local first: results go into a local database that can be exported and handed to someone else. (voice note 30/10) | proposed |
+
+## Open questions
+
+- Web interface or desktop app? The README still has the stack open (PowerShell 7 or C#). (voice note 30/10)
+- Which tests make the first version (trace, ports, DNS, TLS...)? (voice note 30/10)
+- Is the map meant to cross organisations (paths that leave one network and enter another)? (voice note 30/10)
