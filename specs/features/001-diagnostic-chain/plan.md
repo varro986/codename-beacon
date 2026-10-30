@@ -77,9 +77,14 @@ Written first, by the orchestrator; no executor changes them.
 
 ## Risks
 
-- **Route on Linux**: `Test-Connection -Traceroute` uses ICMP; a TCP trace needs a TTL loop on a raw socket,
-  possibly with privileges. T1 tries both on Windows and Linux; if neither works unprivileged, the route reports
-  `SKIP` with the reason (the chain does not depend on it).
+- **Route on Linux**: spike `tests/spikes/Route.Spike.ps1`. Windows, not elevated: the TCP trace (`Socket.Ttl`)
+  never learns hop addresses (the TTL-expired ICMP goes to the kernel; a raw ICMP socket opens unprivileged but
+  received nothing) and a transparent middlebox can answer the SYN at TTL 1 (443 "connected" at hop 1), so it
+  cannot trace; the ICMP trace (`Ping` + `PingOptions(ttl)`) works unprivileged (`TtlExpired` with the hop address).
+  Chosen: ICMP trace on Windows. Linux not verified locally (WSL does not start here): .NET `Ping` on Linux uses an
+  unprivileged ICMP datagram socket, or falls back to the `ping` binary, and TTL-expired replies may not carry the
+  hop address (source knowledge, not verified): to verify in CI. If the ICMP trace yields no hop address, the route is
+  `SKIP` with `no unprivileged way to trace the route on this system` (the chain does not depend on it).
 - **TLS details**: `SslStream` validation callbacks differ slightly between Windows and Linux (chain errors); tests
   run on both in CI.
 - **NTLM** (ADR 0002): not needed here (no authentication in this feature); verified with the feature that brings
