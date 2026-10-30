@@ -5,6 +5,6 @@ foreach ($file in Get-ChildItem -Path $private, $public -Filter '*.ps1' -Recurse
     . $file.FullName
 }
 
-# Public functions are named after their file.
+# Public functions are named after their file; helpers next to them stay private.
 $exported = Get-ChildItem -Path $public -Filter '*.ps1' -File -ErrorAction Ignore | ForEach-Object BaseName
 Export-ModuleMember -Function $exported

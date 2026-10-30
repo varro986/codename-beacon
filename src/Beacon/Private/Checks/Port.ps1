@@ -64,7 +64,21 @@ function Invoke-BeaconPortCheck {
     )
 
     $timeout = $Config.TimeoutSeconds.Port
-    $ip = [System.Net.IPAddress]::Parse($Address)
+    $ip = $null
+    if (-not [System.Net.IPAddress]::TryParse($Address, [ref] $ip)) {
+        # A name (the chain passes the proxy's host): its first IPv4 address, else the first one.
+        try {
+            $ip = [System.Net.Dns]::GetHostAddresses($Address) | Sort-Object { $_.AddressFamily -ne 'InterNetwork' } | Select-Object -First 1
+        }
+        catch [System.Net.Sockets.SocketException] {
+            $ip = $null
+        }
+        if (-not $ip) {
+            $data = [ordered]@{ reason = 'other'; error = 'NameNotResolved'; sourceAddress = $null }
+            return New-BeaconCheckRecord -Check port -Subject "$Port" -Status FAIL -DurationMs 0 -Data $data `
+                -Detail "Name $Address does not resolve: check it, or its DNS zone."
+        }
+    }
     $facts = @{ connected = $false; reason = $null; error = $null; sourceAddress = $null }
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $socket = [System.Net.Sockets.Socket]::new($ip.AddressFamily, [System.Net.Sockets.SocketType]::Stream, [System.Net.Sockets.ProtocolType]::Tcp)

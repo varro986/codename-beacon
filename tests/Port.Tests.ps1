@@ -86,4 +86,24 @@ Describe 'Invoke-BeaconPortCheck' {
         $r.data.reason | Should -Be 'refused'
         $r.data.sourceAddress | Should -Be '127.0.0.1'
     }
+
+    It 'accepts a name, as the chain passes for a proxy, preferring its IPv4 address' {
+        $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+        $listener.Start()
+        try {
+            $r = Invoke-BeaconPortCheck -Address 'localhost' -Port $listener.LocalEndpoint.Port -Config $script:config
+        }
+        finally {
+            $listener.Stop()
+        }
+        $r.status | Should -Be 'OK'
+        $r.data.sourceAddress | Should -Be '127.0.0.1'
+    }
+
+    It 'fails with a hint when the name does not resolve' {
+        $r = Invoke-BeaconPortCheck -Address 'beacon-test.invalid' -Port 8080 -Config $script:config
+        $r.status | Should -Be 'FAIL'
+        $r.data.error | Should -Be 'NameNotResolved'
+        $r.detail | Should -BeLike '*beacon-test.invalid does not resolve*'
+    }
 }
