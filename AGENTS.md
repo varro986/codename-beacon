@@ -66,7 +66,11 @@ the history.
 - Before every change: can it destroy, replace or overwrite files? Can it touch data that is not its own? If so, stop
   and ask. Every write, move or delete has an explicit path, condition and protection (write only if different, copy
   first, atomic, never outside the expected folders).
-- Agents commit, push and merge only when the person driving the session asks; never skip hooks (`--no-verify`); never
+- **Two branches, always**: `dev` is always open and always ahead; work happens there, with free commits. Every push,
+  ordered by the owner, brings `main` level with `dev` once the checks pass, never anything else on `main`: in a product
+  a merge commit whose message says what it brings (the report of the work), in a lab a fast-forward. The executors' worktrees are local branches that end
+  in `dev` and are thrown away.
+- Agents push and merge only when the person driving the session asks; never skip hooks (`--no-verify`); never
   run destructive commands (`rm -rf`, `reset --hard`, `push --force`, recursive deletions).
 - Secrets never in the repository, in logs, results, reports or visible process arguments; only their names in the
   code. gitleaks in pre-commit and in CI. Where a secrets file is needed, a `.example` with the same names and no
@@ -87,7 +91,7 @@ agents".
 | Edit inside the repository | yes | only its task's files, in its worktree | no | no |
 | Edit outside the repository | only the places the repository's `AGENTS.md` names | no | no | no |
 | Run tests and tools | yes | yes | read-only tools | yes |
-| Commit on its own branch or worktree | yes, freely | never | never | never |
+| Commit on `dev` (or a local worktree that ends in `dev`) | yes, freely | never | never | never |
 | Commit on `main`, push, merge, open or merge a pull request | only when the owner orders it, confirmed each time | never | never | never |
 | Destructive commands (force push, hard reset, clean, recursive delete) | never | never | never | never |
 
@@ -220,7 +224,7 @@ Roles are by model tier, so they hold with any assistant; the "today" column is 
 - Every agent reports files changed, tests written or run and doubts; never "done" without saying what was verified.
 - Small jobs are done, not delegated. Real data and production: the agent prepares, the owner approves and ships.
 - **Unsupervised work**: the owner decides first (a converged brainstorming, criteria as tests), then the machine works
-  alone on its own branch. A missing decision is never guessed: it becomes an open question in `brainstorming.md`, the
+  alone on `dev`. A missing decision is never guessed: it becomes an open question in `brainstorming.md`, the
   owner is notified, and the work moves to a task that does not depend on it. A session has a limit (tasks or time) and
   stops when the same check fails twice in a row. It ends with a report: tasks done, checks run, open questions; the
   owner reads that, not the session, and orders push and merge.
@@ -241,8 +245,8 @@ What holds for every product, on top of the common rules.
 
 ### Workflow
 
-- `main` is protected, for everyone: every change goes through a branch and a pull request, merged only with CI green
-  and linear history.
+- `main` is protected, for everyone: it changes only through a pull request from `dev`, merged with a merge commit
+  once CI is green (common rules, "Two branches, always").
 - MIT licence. Community files: `SECURITY.md` (private vulnerability reporting), `CODE_OF_CONDUCT.md` (Contributor
   Covenant 2.1), issue forms, pull request template, Dependabot.
 

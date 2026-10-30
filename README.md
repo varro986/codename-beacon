@@ -12,12 +12,16 @@ service itself) without running a dozen tools by hand and stitching the results 
 Beacon traces the path to a target and scans the network along the way, running the full set of checks it can (from
 name resolution and reachability to ports, proxies and certificates), then reports the first point where things
 break and why. It starts from the experience of an earlier PowerShell diagnostics script and grows it into something
-richer: more checks, more ideas, a clearer report.
+richer: more checks, more ideas, a clearer report. It runs from the command line first; a local web interface comes
+later ([ADR 0001](specs/decisions/0001-cli-first-then-local-web.md)). The first feature is the
+[diagnostic chain](specs/features/001-diagnostic-chain/spec.md).
 
 ## Technologies
 
-To be decided (see "To do"). Constraints: runs on Windows and Linux, open source dependencies (MIT or Apache 2.0
-preferred), checks as small testable units with the network I/O at the edges.
+- PowerShell 7, on Windows, Linux and in containers; probes through the .NET classes it ships with
+  ([ADR 0002](specs/decisions/0002-powershell-7.md)).
+- Pester for tests, PSScriptAnalyzer for lint.
+- Results as JSON, one record per check ([ADR 0003](specs/decisions/0003-run-result-format.md)).
 
 ## Dependencies
 
@@ -30,7 +34,7 @@ codename-beacon/
 |-- README.md         what the project is
 |-- AGENTS.md         rules for coding assistants: common rules, then the product's own
 |-- CLAUDE.md         shell for Claude Code (@AGENTS.md)
-|-- CONTRIBUTING.md   how to contribute (specs first, GitHub Flow)
+|-- CONTRIBUTING.md   how to contribute (specs first, dev then main)
 |-- LICENSE           MIT
 |-- SECURITY.md       how to report a vulnerability
 |-- CODE_OF_CONDUCT.md
@@ -51,5 +55,7 @@ codename-beacon/
 
 - **Only on networks you are allowed to test**: scanning a network you do not own or have no permission for is not a
   use case.
-- **Read-only**: Beacon observes and reports; it never changes network or system settings.
+- **Read-only by default**: Beacon observes and reports; it never changes network or system settings. A check that
+  writes data (for example a test file in a storage) is off by default, enabled only by its profile, never in
+  production; it asks for confirmation and always removes what it wrote.
 
