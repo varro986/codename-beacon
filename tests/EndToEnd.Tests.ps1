@@ -133,4 +133,25 @@ Describe 'Beacon exit codes' {
         $null = & pwsh -NoProfile -File $script:entry -Target '127.0.0.1' -Port 70000 -Quiet 6>&1
         $LASTEXITCODE | Should -Be 2
     }
+
+    It 'exits 2 when -Environment is missing' {
+        $out = & pwsh -NoProfile -File $script:entry -MatrixPath $script:goodMatrix -Quiet 6>&1 | Out-String
+        $LASTEXITCODE | Should -Be 2
+        $out | Should -BeLike '*Missing parameters*'
+    }
+
+    It 'exits 2 when a matrix and a single target are both given' {
+        $null = & pwsh -NoProfile -File $script:entry -MatrixPath $script:goodMatrix -Environment local -Target '127.0.0.1' -Quiet 6>&1
+        $LASTEXITCODE | Should -Be 2
+    }
+
+    It 'exits 2 on a target URL that is not valid' {
+        $null = & pwsh -NoProfile -File $script:entry -Target '127.0.0.1' -Url 'not-a-url' -Quiet 6>&1
+        $LASTEXITCODE | Should -Be 2
+    }
+
+    It 'exits 2 on a port that is not a number' {
+        $null = & pwsh -NoProfile -File $script:entry -Target '127.0.0.1' -Port abc -Quiet 6>&1
+        $LASTEXITCODE | Should -Be 2
+    }
 }

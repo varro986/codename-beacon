@@ -52,9 +52,39 @@ Describe 'Get-BeaconRouteOutcome' {
     }
 }
 
+Describe 'Get-BeaconRouteOutcome on systems without hop addresses' {
+    It 'keeps the hops and skips when replies came but no address at all' {
+        $facts = @{ hops = @('*', '*'); replies = 2; reached = $false; error = $null; durationMs = 40; method = 'icmp' }
+        $r = Get-BeaconRouteOutcome -Address '192.0.2.20' -Facts $facts
+        $r.status | Should -Be 'SKIP'
+        $r.detail | Should -BeLike '*addresses are not available on this system*'
+        $r.data.hops | Should -Be @('*', '*')
+    }
+
+    It 'reaches a target even when its own address is missing' {
+        $facts = @{ hops = @('198.51.100.1', '*'); replies = 2; reached = $true; error = $null; durationMs = 40; method = 'icmp' }
+        (Get-BeaconRouteOutcome -Address '192.0.2.20' -Facts $facts).detail | Should -Be 'Reached in 2 hops.'
+    }
+
+    It 'reports an unreachable status as INFO with the hop that said it' {
+        $facts = @{ hops = @('198.51.100.1', '203.0.113.5'); replies = 1; unreachable = @{ hop = 2; address = '203.0.113.5'; status = 'DestinationHostUnreachable' }
+            reached = $false; error = $null; durationMs = 40; method = 'icmp' }
+        $r = Get-BeaconRouteOutcome -Address '192.0.2.20' -Facts $facts
+        $r.status | Should -Be 'INFO'
+        $r.detail | Should -Be 'Unreachable after hop 2 (203.0.113.5): DestinationHostUnreachable.'
+        $r.data.unreachable | Should -Be 'DestinationHostUnreachable'
+    }
+
+    It 'says the address is unknown when the unreachable reply has none' {
+        $facts = @{ hops = @('*'); replies = 0; unreachable = @{ hop = 1; address = $null; status = 'DestinationNetworkUnreachable' }
+            reached = $false; error = $null; durationMs = 4; method = 'icmp' }
+        (Get-BeaconRouteOutcome -Address '192.0.2.20' -Facts $facts).detail | Should -Be 'Unreachable after hop 1 (unknown address): DestinationNetworkUnreachable.'
+    }
+}
+
 Describe 'Invoke-BeaconRouteCheck' {
     BeforeAll {
-        $script:config = @{ Route = @{ MaxHops = 5; HopTimeoutSeconds = 2 } }
+        $script:config = @{ Route = @{ MaxHops = 5; HopTimeoutSeconds = 2; PingBufferBytes = 32 } }
     }
 
     It 'reaches loopback in one hop, or skips with a reason where ping is not permitted' {
@@ -71,5 +101,12 @@ Describe 'Invoke-BeaconRouteCheck' {
             $r.data.lastAnswering | Should -Be '127.0.0.1'
             $r.data.method | Should -Be 'icmp'
         }
+    }
+
+    It 'takes the ping buffer size from the configuration' {
+        $config = @{ Route = @{ MaxHops = 1; HopTimeoutSeconds = 2; PingBufferBytes = 16 } }
+        $facts = Get-BeaconRouteFact -Address '127.0.0.1' -Config $config
+        $facts.error | Should -BeNullOrEmpty
+        $facts.hops.Count | Should -Be 1
     }
 }

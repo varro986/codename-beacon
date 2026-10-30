@@ -66,18 +66,15 @@ function Invoke-BeaconPortCheck {
     $timeout = $Config.TimeoutSeconds.Port
     $ip = $null
     if (-not [System.Net.IPAddress]::TryParse($Address, [ref] $ip)) {
-        # A name (the chain passes the proxy's host): its first IPv4 address, else the first one.
-        try {
-            $ip = [System.Net.Dns]::GetHostAddresses($Address) | Sort-Object { $_.AddressFamily -ne 'InterNetwork' } | Select-Object -First 1
-        }
-        catch [System.Net.Sockets.SocketException] {
-            $ip = $null
-        }
-        if (-not $ip) {
+        # A name (the chain passes the proxy's host): the DNS probe, with its timeout; IPv4 first, as the chain does.
+        $dns = Get-BeaconDnsFact -HostName $Address -Config $Config
+        $resolved = @($dns.Addresses | Where-Object { $_ -notmatch ':' }) + @($dns.Addresses | Where-Object { $_ -match ':' })
+        if ($dns.ErrorKind -or -not $resolved.Count) {
             $data = [ordered]@{ reason = 'other'; error = 'NameNotResolved'; sourceAddress = $null }
-            return New-BeaconCheckRecord -Check port -Subject "$Port" -Status FAIL -DurationMs 0 -Data $data `
+            return New-BeaconCheckRecord -Check port -Subject "$Port" -Status FAIL -DurationMs $dns.DurationMs -Data $data `
                 -Detail "Name $Address does not resolve: check it, or its DNS zone."
         }
+        $ip = [System.Net.IPAddress]::Parse($resolved[0])
     }
     $facts = @{ connected = $false; reason = $null; error = $null; sourceAddress = $null }
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()

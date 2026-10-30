@@ -49,6 +49,21 @@ Describe 'Resolve-BeaconProxy' {
     }
 }
 
+Describe 'Hide-BeaconUrlUserInfo' {
+    It '<Name>' -ForEach @(
+        @{ Name = 'drops user and password'; Url = 'http://alice:s3cret@px:8080'; Expected = 'http://px:8080' }
+        @{ Name = 'drops a user alone'; Url = 'http://alice@px:8080/'; Expected = 'http://px:8080/' }
+        @{ Name = 'drops a password that contains @'; Url = 'http://alice:p@ss@px:8080'; Expected = 'http://px:8080' }
+        @{ Name = 'drops it without scheme'; Url = 'alice:s3cret@px:8080'; Expected = 'px:8080' }
+        @{ Name = 'keeps a URL without user info'; Url = 'https://px:8080/a?b=c@d'; Expected = 'https://px:8080/a?b=c@d' }
+        @{ Name = 'keeps an @ in the path'; Url = 'http://px/a@b'; Expected = 'http://px/a@b' }
+        @{ Name = 'passes an empty value'; Url = ''; Expected = $null }
+        @{ Name = 'passes null'; Url = $null; Expected = $null }
+    ) {
+        Hide-BeaconUrlUserInfo -Url $Url | Should -Be $Expected
+    }
+}
+
 Describe 'Get-BeaconHttpOutcome' {
     It 'is OK when the expected status is met' {
         $facts = Get-TestFact @{ Status = 401; Reason = 'Unauthorized' }
@@ -143,11 +158,24 @@ Describe 'Get-BeaconHttpOutcome' {
         $r.detail | Should -BeLike '*http://px:8080*407*'
     }
 
-    It 'reads a rejection status to a plain http request as the proxy blocking, with its body' {
+    It 'warns, neutrally, on a 403 to a plain http request through a proxy, with its body' {
         $facts = Get-TestFact @{ Status = 403; Reason = 'Forbidden'; Body = 'blocked by policy'; Proxy = 'http://px:8080' }
         $r = Get-BeaconHttpOutcome -Url 'http://h/' -Facts $facts -Config $Config
-        $r.status | Should -Be 'FAIL'
-        $r.detail | Should -BeLike '*http://px:8080*403 Forbidden*blocked by policy'
+        $r.status | Should -Be 'WARN'
+        $r.detail | Should -Be '403 Forbidden through proxy http://px:8080: the proxy or the service refused. blocked by policy'
+    }
+
+    It 'does not warn about the proxy when the 403 is the expected status' {
+        $facts = Get-TestFact @{ Status = 403; Reason = 'Forbidden'; Proxy = 'http://px:8080' }
+        (Get-BeaconHttpOutcome -Url 'http://h/' -Facts $facts -ExpectedStatus 403 -Config $Config).status | Should -Be 'OK'
+    }
+
+    It 'shows no user info of the proxy in the detail or the data' {
+        $facts = Get-TestFact @{ Status = 403; Reason = 'Forbidden'; Proxy = 'http://alice:s3cret@px:8080' }
+        $r = Get-BeaconHttpOutcome -Url 'http://h/' -Facts $facts -Config $Config
+        $r.detail | Should -BeLike '*http://px:8080*'
+        $r.data.proxy | Should -Be 'http://px:8080'
+        ($r | ConvertTo-Json -Depth 5) | Should -Not -Match 's3cret|alice'
     }
 
     It 'leaves a 403 inside a tunnel to the origin' {
@@ -247,10 +275,10 @@ Describe 'Invoke-BeaconHttpCheck against local listeners' {
         $r.detail | Should -BeLike 'Connection to * failed:*'
     }
 
-    It 'goes through the matrix proxy and blames it when it rejects a plain http URL' {
+    It 'goes through the matrix proxy and warns, neutrally, when it answers 403 to a plain http URL' {
         $r = Invoke-BeaconHttpCheck -Url 'http://beacon-target.invalid/x' -MatrixProxy $Rejecting.Url -Config $Config
-        $r.status | Should -Be 'FAIL'
-        $r.detail | Should -BeLike "*$($Rejecting.Url)*403*blocked by proxy"
+        $r.status | Should -Be 'WARN'
+        $r.detail | Should -BeLike "403 Forbidden through proxy $($Rejecting.Url): the proxy or the service refused.*blocked by proxy"
         $r.data.proxy | Should -Be $Rejecting.Url
     }
 
@@ -268,7 +296,19 @@ Describe 'Invoke-BeaconHttpCheck against local listeners' {
             $env:HTTP_PROXY = $Rejecting.Url
             $r = Invoke-BeaconHttpCheck -Url 'http://beacon-target.invalid/x' -Config $Config
             $r.data.proxy | Should -Be $Rejecting.Url
-            $r.status | Should -Be 'FAIL'
+            $r.status | Should -Be 'WARN'
+        }
+        finally { $env:HTTP_PROXY, $env:http_proxy, $env:NO_PROXY, $env:no_proxy = $saved }
+    }
+
+    It 'never shows the user info of a proxy taken from the environment' {
+        $saved = $env:HTTP_PROXY, $env:http_proxy, $env:NO_PROXY, $env:no_proxy
+        try {
+            $env:http_proxy = $null; $env:no_proxy = $null; $env:NO_PROXY = $null
+            $env:HTTP_PROXY = $Rejecting.Url -replace '//', '//alice:s3cret@'
+            $r = Invoke-BeaconHttpCheck -Url 'http://beacon-target.invalid/x' -Config $Config
+            $r.data.proxy | Should -Be $Rejecting.Url
+            ($r | ConvertTo-Json -Depth 5) | Should -Not -Match 's3cret|alice'
         }
         finally { $env:HTTP_PROXY, $env:http_proxy, $env:NO_PROXY, $env:no_proxy = $saved }
     }

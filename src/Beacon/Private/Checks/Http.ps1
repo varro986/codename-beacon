@@ -46,6 +46,17 @@ function Resolve-BeaconProxy {
     $proxy
 }
 
+function Hide-BeaconUrlUserInfo {
+    <# A URL (or a proxy such as user:pass@host:port) without its user info: a secret never reaches the detail, the data or the console. #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [AllowNull()] [AllowEmptyString()] [string] $Url
+    )
+
+    if ($Url) { $Url -replace '^((?:[a-z][a-z0-9+.-]*://)?)[^/?#]*@', '$1' }
+}
+
 function Invoke-BeaconHttpProbe {
     <# The network half: one GET, redirects not followed, raw facts. Never throws on a network failure. #>
     [CmdletBinding()]
@@ -58,7 +69,7 @@ function Invoke-BeaconHttpProbe {
 
     $facts = @{
         Status = $null; Reason = $null; Location = $null; Body = $null
-        Proxy = $Proxy; Tunneled = $Proxy -and $Url -match '^https:'
+        Proxy = Hide-BeaconUrlUserInfo $Proxy; Tunneled = $Proxy -and $Url -match '^https:'
         ErrorKind = $null; ErrorMessage = $null; ProxyStatus = $null; DurationMs = 0
     }
     $handler = [System.Net.Http.SocketsHttpHandler]::new()
@@ -145,7 +156,7 @@ function Get-BeaconHttpOutcome {
         [Parameter(Mandatory)] [hashtable] $Config
     )
 
-    $proxy = $Facts.Proxy
+    $proxy = Hide-BeaconUrlUserInfo $Facts.Proxy
     $data = [ordered]@{}
     if ($null -ne $Facts.Status) { $data.status = $Facts.Status }
     $data.proxy = $proxy ? $proxy : 'direct'
@@ -158,13 +169,11 @@ function Get-BeaconHttpOutcome {
     $withPreview = { param([string] $Text) $Facts.Body ? "$Text $($Facts.Body)" : $Text }
     $answer = if ($null -ne $Facts.Status) { "$($Facts.Status) $($Facts.Reason)".Trim() }
 
-    # The proxy answered 407, or refused a plain http request with a status listed as a rejection: not the origin's word.
-    $rejectStatuses = $Config.Http.ProxyRejectStatuses ?? @(403)
+    # A 407 to a plain http request is the proxy asking for authentication, not the origin's word.
     $viaProxyOnly = $proxy -and -not $Facts.Tunneled -and $null -ne $Facts.Status
     $kind = $Facts.ErrorKind
     $proxyStatus = $Facts.ProxyStatus
     if ($viaProxyOnly -and $Facts.Status -eq 407) { $kind = 'proxyAuthRequired'; $proxyStatus = 407 }
-    elseif ($viaProxyOnly -and $Facts.Status -in $rejectStatuses) { $kind = 'proxyTunnelFailed'; $proxyStatus = $Facts.Status }
 
     if ($kind) {
         $proxyAnswer = if ($proxyStatus) { "answered $($answer ?? $proxyStatus)" }
@@ -190,6 +199,11 @@ function Get-BeaconHttpOutcome {
     }
 
     $redirect = $Facts.Location ? " Redirects to $($Facts.Location) (not followed)." : ''
+
+    # A 403 to a plain http request through a proxy: it is not known whether the proxy or the service refused.
+    if ($viaProxyOnly -and $Facts.Status -eq 403 -and 403 -notin $ExpectedStatus) {
+        return & $record WARN (& $withPreview "$answer through proxy ${proxy}: the proxy or the service refused.")
+    }
 
     if ($ExpectedStatus) {
         if ($Facts.Status -in $ExpectedStatus) {

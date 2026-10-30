@@ -30,6 +30,19 @@ function Write-BeaconResult {
     }
 }
 
+function Add-BeaconLogLine {
+    <# Appends one line to run.log. Append only: the log is the raw trail, never rewritten. #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)] $Run,
+        [Parameter(Mandatory)] [datetimeoffset] $Time,
+        [Parameter(Mandatory)] [string] $Text
+    )
+
+    $line = "$(Get-BeaconTimestamp -Time $Time) $Text" -replace '\s*[\r\n]+\s*', ' '
+    [System.IO.File]::AppendAllText($Run.LogPath, $line + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false))
+}
+
 function New-BeaconRun {
     <# Creates the run folder and writes result.json at once, incomplete: a run that does not end stays recognisable. #>
     [CmdletBinding(SupportsShouldProcess)]
@@ -50,7 +63,8 @@ function New-BeaconRun {
 
     $manifest = Import-PowerShellDataFile -Path (Join-Path $PSScriptRoot '../Beacon.psd1')
     $run = [pscustomobject]@{
-        Path   = Join-Path $folder 'result.json'
+        Path    = Join-Path $folder 'result.json'
+        LogPath = Join-Path $folder 'run.log'
         Result = [ordered]@{
             schemaVersion = $Config.ResultSchemaVersion
             run           = [ordered]@{
@@ -68,6 +82,7 @@ function New-BeaconRun {
     if ($PSCmdlet.ShouldProcess($run.Path, 'Create run')) {
         $null = [System.IO.Directory]::CreateDirectory($folder)
         Write-BeaconResult -Run $run
+        Add-BeaconLogLine -Run $run -Time $Now -Text "START environment=$(if ($Environment) { $Environment } else { '-' }) beacon=$($manifest.ModuleVersion) host=$([Environment]::MachineName)"
         $run
     }
 }
@@ -84,6 +99,11 @@ function Add-BeaconRecords {
     if ($PSCmdlet.ShouldProcess($Run.Path, 'Add records')) {
         $Run.Result.checks.AddRange($Records)
         Write-BeaconResult -Run $Run
+        $now = [datetimeoffset]::Now
+        foreach ($record in $Records) {
+            $where = if ($record.target) { "$($record.group ? "$($record.group)/" : '')$($record.target)" } else { '-' }
+            Add-BeaconLogLine -Run $Run -Time $now -Text "$($record.status) $where $($record.check) $($record.subject): $($record.detail)"
+        }
     }
 }
 
@@ -99,5 +119,6 @@ function Complete-BeaconRun {
         $Run.Result.run.endedAt = Get-BeaconTimestamp -Time $Now
         $Run.Result.run.complete = $true
         Write-BeaconResult -Run $Run
+        Add-BeaconLogLine -Run $Run -Time $Now -Text 'END complete'
     }
 }

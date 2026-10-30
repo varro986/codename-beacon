@@ -1,5 +1,6 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '../src/Beacon/Private/Common.ps1')
+    . (Join-Path $PSScriptRoot '../src/Beacon/Private/Checks/Dns.ps1')
     . (Join-Path $PSScriptRoot '../src/Beacon/Private/Checks/Port.ps1')
 }
 
@@ -56,7 +57,7 @@ Describe 'Get-BeaconPortOutcome' {
 Describe 'Invoke-BeaconPortCheck' {
     BeforeAll {
         # The timeout stays above the ~2 s a refused loopback connect can take on Windows.
-        $script:config = @{ TimeoutSeconds = @{ Port = 10 } }
+        $script:config = @{ TimeoutSeconds = @{ Port = 10; Dns = 5 } }
     }
 
     It 'opens a connection to a listener on loopback' {
@@ -105,5 +106,14 @@ Describe 'Invoke-BeaconPortCheck' {
         $r.status | Should -Be 'FAIL'
         $r.data.error | Should -Be 'NameNotResolved'
         $r.detail | Should -BeLike '*beacon-test.invalid does not resolve*'
+        $r.data.sourceAddress | Should -BeNullOrEmpty
+    }
+
+    It 'turns any failure of the name probe into the FAIL record, never an exception' {
+        Mock Get-BeaconDnsFact { @{ Addresses = [string[]] @(); ErrorKind = 'timeout'; DurationMs = 5000 } }
+        $r = Invoke-BeaconPortCheck -Address 'slow.example.test' -Port 8080 -Config $script:config
+        $r.status | Should -Be 'FAIL'
+        $r.durationMs | Should -Be 5000
+        $r.detail | Should -BeLike '*slow.example.test does not resolve*'
     }
 }

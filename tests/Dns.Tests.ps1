@@ -68,28 +68,28 @@ Describe 'Get-BeaconDnsOutcome' {
     It 'fails with NXDOMAIN, the server asked and what to do when the name is not found' {
         $r = Get-BeaconDnsOutcome -Facts (New-DnsFact @{ ErrorKind = 'notFound'; Addresses = [string[]] @() })
         $r.status | Should -Be 'FAIL'
-        $r.detail | Should -Be 'Name not found (NXDOMAIN) by 10.0.0.2 (system resolver): check the name, or the DNS zone it belongs to.'
+        $r.detail | Should -Be 'Name not found (NXDOMAIN) from the system resolver (configured DNS servers: 10.0.0.2): check the name, or the DNS zone it belongs to.'
         $r.data.error | Should -Be 'NXDOMAIN'
     }
 
     It 'fails when the DNS server fails' {
         $r = Get-BeaconDnsOutcome -Facts (New-DnsFact @{ ErrorKind = 'serverFailure'; Addresses = [string[]] @() })
         $r.status | Should -Be 'FAIL'
-        $r.detail | Should -BeLike '*10.0.0.2*reachable*'
+        $r.detail | Should -BeLike '*configured DNS servers: 10.0.0.2*reachable*'
         $r.data.error | Should -Be 'SERVFAIL'
     }
 
     It 'fails with the time waited when the server does not answer' {
         $r = Get-BeaconDnsOutcome -Facts (New-DnsFact @{ ErrorKind = 'timeout'; Addresses = [string[]] @() })
         $r.status | Should -Be 'FAIL'
-        $r.detail | Should -BeLike 'No answer within 5 s from 10.0.0.2*reachable*'
+        $r.detail | Should -BeLike 'No answer within 5 s from the system resolver (configured DNS servers: 10.0.0.2)*reachable*'
         $r.data.error | Should -Be 'timeout'
     }
 
     It 'fails with the message for any other error, also without known servers' {
         $r = Get-BeaconDnsOutcome -Facts (New-DnsFact @{ ErrorKind = 'other'; ErrorMessage = 'boom'; Addresses = [string[]] @(); Servers = [string[]] @() })
         $r.status | Should -Be 'FAIL'
-        $r.detail | Should -BeLike '*boom*not found on this machine*'
+        $r.detail | Should -BeLike '*boom*configured DNS servers: none found on this machine*'
         $r.data.error | Should -Be 'other'
     }
 }

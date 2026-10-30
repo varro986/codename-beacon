@@ -57,7 +57,7 @@ function Invoke-Beacon {
     }
     Complete-BeaconRun -Run $run
 
-    if (-not $Quiet) { Write-BeaconReport -Result $run.Result }
+    if (-not $Quiet) { Write-BeaconReport -Result $run.Result -Config $config }
     [pscustomobject]@{
         Path   = $run.Path
         Result = $run.Result
@@ -77,19 +77,15 @@ function Test-BeaconSingleTarget {
         [Parameter(Mandatory)] [hashtable] $Config
     )
 
-    foreach ($p in $Port) {
-        if ($p -lt 1 -or $p -gt 65535) { "Port $p is not valid: use 1-65535." }
-    }
-    if (@($Port | Sort-Object -Unique).Count -gt $Config.MaxPortsPerTarget) {
-        "More than $($Config.MaxPortsPerTarget) ports: Beacon tests declared ports, it does not scan."
-    }
-    foreach ($u in @($Url) + @($Proxy | Where-Object { $_ })) {
-        $uri = $null
-        if (-not [uri]::TryCreate($u, [UriKind]::Absolute, [ref] $uri) -or $uri.Scheme -notin 'http', 'https') {
-            "$u is not an absolute http or https URL."
-        }
-    }
-    foreach ($s in $ExpectedStatus) {
-        if ($s -lt 100 -or $s -gt 599) { "Expected status $s is not valid: use 100-599." }
+    # The rules live in Matrix.ps1: the command line target is checked as a matrix target.
+    $target = @{ Name = 'target'; Host = 'target' }
+    if ($Port) { $target.Ports = @($Port) }
+    if ($Url) { $target.Urls = @($Url) }
+    if ($ExpectedStatus) { $target.Expect = @{ Http = @($ExpectedStatus) } }
+    Test-BeaconTarget -Path 'Parameters' -Target $target -Config $Config
+
+    if ($Proxy) {
+        $proxyProblem = Test-BeaconProxy -Value $Proxy
+        if ($proxyProblem) { "Parameters.Proxy: $proxyProblem" }
     }
 }

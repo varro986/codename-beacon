@@ -75,7 +75,7 @@ Describe 'Run result' {
         Add-BeaconRecords -Run $run -Records @($script:record)
         Complete-BeaconRun -Run $run
 
-        @(Get-ChildItem -LiteralPath (Split-Path $run.Path -Parent) -Force).Name | Should -Be @('result.json')
+        @(Get-ChildItem -LiteralPath (Split-Path $run.Path -Parent) -Force).Name | Should -Be @('result.json', 'run.log')
     }
 
     It 'gives a suffix to a folder that exists and leaves it untouched' {
@@ -89,6 +89,39 @@ Describe 'Run result' {
         (Split-Path (Split-Path $second.Path -Parent) -Leaf) | Should -Be '20261030_090000_2'
         (Split-Path (Split-Path $third.Path -Parent) -Leaf) | Should -Be '20261030_090000_3'
         Get-Content -Raw -LiteralPath $first.Path | Should -Be $before
+    }
+
+    It 'logs a start line, one line per record and an end line in run.log' {
+        $run = New-BeaconRun -Environment 'test' -Config $script:config -Now $script:now
+        $logPath = Join-Path (Split-Path $run.Path -Parent) 'run.log'
+        $other = [ordered]@{ target = 'solo'; check = 'dns'; subject = 'portal'; status = 'FAIL'; detail = "Not found.`nSecond line." }
+        Add-BeaconRecords -Run $run -Records @($script:record, $other)
+        Complete-BeaconRun -Run $run -Now $script:now.AddSeconds(41)
+
+        $bytes = [System.IO.File]::ReadAllBytes($logPath)
+        $bytes[0] | Should -Not -Be 0xEF
+        $lines = [System.IO.File]::ReadAllLines($logPath)
+        $lines.Count | Should -Be 4
+        $lines[0] | Should -BeLike '2026-10-30T09:00:00+01:00 START environment=test beacon=* host=*'
+        $lines[1] | Should -Match '^\S+ OK web/portal port 443: Opened\.$'
+        $lines[2] | Should -Match '^\S+ FAIL solo dns portal: Not found\. Second line\.$'
+        $lines[3] | Should -Be '2026-10-30T09:00:41+01:00 END complete'
+    }
+
+    It 'appends to run.log, never rewrites it' {
+        $run = New-BeaconRun -Environment 'test' -Config $script:config -Now $script:now
+        $logPath = Join-Path (Split-Path $run.Path -Parent) 'run.log'
+        $first = [System.IO.File]::ReadAllText($logPath)
+        Add-BeaconRecords -Run $run -Records @($script:record)
+        [System.IO.File]::ReadAllText($logPath) | Should -BeLike "$first*OK web/portal*"
+    }
+
+    It 'writes no log line with -WhatIf' {
+        $run = New-BeaconRun -Environment 'test' -Config $script:config -Now $script:now
+        $logPath = Join-Path (Split-Path $run.Path -Parent) 'run.log'
+        Add-BeaconRecords -Run $run -Records @($script:record) -WhatIf
+        Complete-BeaconRun -Run $run -WhatIf
+        @([System.IO.File]::ReadAllLines($logPath)).Count | Should -Be 1
     }
 
     It 'writes nothing with -WhatIf' {

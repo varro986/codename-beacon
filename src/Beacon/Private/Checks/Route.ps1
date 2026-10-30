@@ -5,7 +5,8 @@ function Get-BeaconRouteOutcome {
     [OutputType([ordered])]
     param(
         [Parameter(Mandatory)] [string] $Address,
-        # hops (address or '*', one per TTL), reached, error, durationMs, method
+        # hops (address or '*', one per TTL), replies (hops that answered, with or without address), unreachable (hop, address, status, or null),
+        # reached, error, durationMs, method
         [Parameter(Mandatory)] [System.Collections.IDictionary] $Facts
     )
 
@@ -23,9 +24,18 @@ function Get-BeaconRouteOutcome {
         $status = 'INFO'
         $detail = "Reached in $($hops.Count) $(if ($hops.Count -eq 1) { 'hop' } else { 'hops' })."
     }
+    elseif ($Facts.unreachable) {
+        $status = 'INFO'
+        $detail = "Unreachable after hop $($Facts.unreachable.hop) ($($Facts.unreachable.address ?? 'unknown address')): $($Facts.unreachable.status)."
+        $data.unreachable = $Facts.unreachable.status
+    }
     elseif ($lastIndex -ge 0) {
         $status = 'INFO'
         $detail = "No answer after hop $($lastIndex + 1) ($($hops[$lastIndex])): trace packets dropped or filtered."
+    }
+    elseif ($Facts.replies -and -not $Facts.error) {
+        $status = 'SKIP'
+        $detail = 'The hops answered but their addresses are not available on this system.'
     }
     else {
         $status = 'SKIP'
@@ -46,23 +56,28 @@ function Get-BeaconRouteFact {
 
     $maxHops = $Config.Route.MaxHops
     $timeoutMs = $Config.Route.HopTimeoutSeconds * 1000
-    $facts = @{ hops = [System.Collections.Generic.List[string]]::new(); reached = $false; error = $null; durationMs = 0; method = 'icmp' }
+    $facts = @{ hops = [System.Collections.Generic.List[string]]::new(); replies = 0; unreachable = $null; reached = $false; error = $null; durationMs = 0; method = 'icmp' }
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $ip = [System.Net.IPAddress]::Parse($Address)
-    $payload = [byte[]]::new(32)
+    $payload = [byte[]]::new($Config.Route.PingBufferBytes)
     $ping = [System.Net.NetworkInformation.Ping]::new()
     try {
         for ($ttl = 1; $ttl -le $maxHops; $ttl++) {
             $options = [System.Net.NetworkInformation.PingOptions]::new($ttl, $true)
             $reply = $ping.Send($ip, $timeoutMs, $payload, $options)
-            if ($reply.Status -in 'TtlExpired', 'Success') {
-                $facts.hops.Add($reply.Address.ToString())
-            }
-            else {
-                $facts.hops.Add('*')
-            }
+            $isHop = $reply.Status -in 'TtlExpired', 'Success'
+            $isDefinitive = $reply.Status.ToString() -like 'Destination*'
+            # PingReply.Address can be null on Linux even for an answer: the hop stays, as '*'.
+            $address = if ($isHop -or $isDefinitive) { $reply.Address }
+            $facts.hops.Add($(if ($address) { $address.ToString() } else { '*' }))
+            if ($isHop) { $facts.replies++ }
             if ($reply.Status -eq 'Success') {
                 $facts.reached = $true
+                break
+            }
+            if ($isDefinitive) {
+                # A router said there is no way on: going on to MaxHops would only wait for silence.
+                $facts.unreachable = @{ hop = $ttl; address = $address?.ToString(); status = [string] $reply.Status }
                 break
             }
         }

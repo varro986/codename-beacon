@@ -113,6 +113,19 @@ Describe 'Read-BeaconMatrix structure' {
         $err.Exception.Message | Should -Match 'Environments\.test\.Proxy: must be an absolute http or https URL'
     }
 
+    It 'rejects user info in the proxy without echoing it' {
+        $err = Get-ReadError (Write-MatrixFile "@{ Environments = @{ test = @{ Proxy = 'http://alice:s3cret@proxy.example.net:8080'; Groups = @{ web = @{ Targets = @(@{ Name = 'a'; Host = 'h' }) } } } } }")
+        $err.FullyQualifiedErrorId | Should -BeLike 'BeaconInput*'
+        $err.Exception.Message | Should -Match 'Environments\.test\.Proxy: must not contain user info'
+        $err.Exception.Message | Should -Not -Match 's3cret|alice'
+    }
+
+    It 'rejects user info in a target URL without echoing it' {
+        $err = Get-ReadError (Write-TargetsMatrix "@{ Name = 'a'; Host = 'h'; Urls = @('https://alice:s3cret@h.example.net/x') }")
+        $err.Exception.Message | Should -Match 'Targets\[0\]\.Urls: a URL contains user info'
+        $err.Exception.Message | Should -Not -Match 's3cret|alice'
+    }
+
     It 'requires non-empty Targets in a group' {
         $err = Get-ReadError (Write-MatrixFile "@{ Environments = @{ test = @{ Groups = @{ web = @{ Targets = @() } } } } }")
         $err.Exception.Message | Should -Match 'Environments\.test\.Groups\.web\.Targets: missing or empty. Add a list'

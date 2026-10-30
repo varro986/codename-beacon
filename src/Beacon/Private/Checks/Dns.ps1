@@ -81,26 +81,26 @@ function Get-BeaconDnsOutcome {
 
     $record = { param($status, $detail, $data) New-BeaconCheckRecord -Check dns -Subject $Facts.HostName -Status $status -Detail $detail -DurationMs $Facts.DurationMs -Data $data }
     $servers = @($Facts.Servers)
-    $serverText = if ($servers.Count) { $servers -join ', ' } else { 'the DNS servers (not found on this machine)' }
+    $serverText = if ($servers.Count) { $servers -join ', ' } else { 'none found on this machine' }
 
     if ($Facts.ErrorKind) {
         $data = [ordered]@{ servers = $servers }
         switch ($Facts.ErrorKind) {
             'notFound' {
                 $data.error = 'NXDOMAIN'
-                $detail = "Name not found (NXDOMAIN) by $serverText (system resolver): check the name, or the DNS zone it belongs to."
+                $detail = "Name not found (NXDOMAIN) from the system resolver (configured DNS servers: $serverText): check the name, or the DNS zone it belongs to."
             }
             'serverFailure' {
                 $data.error = 'SERVFAIL'
-                $detail = "The DNS server failed to answer for this name ($serverText, system resolver): check the DNS servers are reachable and working."
+                $detail = "The DNS server failed to answer for this name (system resolver, configured DNS servers: $serverText): check the DNS servers are reachable and working."
             }
             'timeout' {
                 $data.error = 'timeout'
-                $detail = "No answer within $($Facts.TimeoutSeconds) s from $serverText (system resolver): check the DNS servers are reachable."
+                $detail = "No answer within $($Facts.TimeoutSeconds) s from the system resolver (configured DNS servers: $serverText): check the DNS servers are reachable."
             }
             default {
                 $data.error = 'other'
-                $detail = "Name resolution failed ($($Facts.ErrorMessage)) asking $serverText (system resolver): check the name and that the DNS servers are reachable."
+                $detail = "Name resolution failed ($($Facts.ErrorMessage)) asking the system resolver (configured DNS servers: $serverText): check the name and that the DNS servers are reachable."
             }
         }
         return & $record 'FAIL' $detail $data

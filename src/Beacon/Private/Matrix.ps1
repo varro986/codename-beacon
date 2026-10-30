@@ -64,6 +64,34 @@ function Test-BeaconUrl {
     ($Value -is [string]) -and [uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -and $uri.Scheme -in 'http', 'https'
 }
 
+function Test-BeaconUrlUserInfo {
+    <# True when a URL carries user info (user:password@host). Credentials never go in a URL Beacon reads or shows. #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [AllowNull()] [object] $Value
+    )
+
+    $uri = $null
+    ($Value -is [string]) -and [uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -and [bool]$uri.UserInfo
+}
+
+function Test-BeaconProxy {
+    <# The problem of a proxy URL (matrix or command line), or $null when it is valid. The value is never echoed. #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [AllowNull()] [object] $Value
+    )
+
+    if (-not (Test-BeaconUrl -Value $Value)) {
+        return "must be an absolute http or https URL such as 'http://proxy.example.net:8080'."
+    }
+    if (Test-BeaconUrlUserInfo -Value $Value) {
+        return 'must not contain user info (user:password@): credentials do not go in the matrix or on the command line. Beacon reads the proxy from HTTPS_PROXY / HTTP_PROXY when it needs one.'
+    }
+}
+
 function Get-BeaconKeyProblem {
     <# Problems for keys of a table that are not in the allowed list (names only, never values). #>
     [CmdletBinding()]
@@ -135,6 +163,9 @@ function Test-BeaconTarget {
             if (-not (Test-BeaconUrl -Value $url)) {
                 $problems.Add("${Path}.Urls: '$url' is not an absolute http or https URL. Write it as 'https://host/path'.")
             }
+            elseif (Test-BeaconUrlUserInfo -Value $url) {
+                $problems.Add("${Path}.Urls: a URL contains user info (user:password@): credentials do not go in the matrix or on the command line. Remove it; use SecretEnv for a secret.")
+            }
         }
     }
 
@@ -195,8 +226,9 @@ function Test-BeaconMatrix {
         }
         $problems.AddRange([string[]]@(Get-BeaconKeyProblem -Path $envPath -Table $environment -Allowed @('Groups', 'Proxy')))
 
-        if ($environment.Contains('Proxy') -and -not (Test-BeaconUrl -Value $environment.Proxy)) {
-            $problems.Add("${envPath}.Proxy: must be an absolute http or https URL such as 'http://proxy.example.net:8080'.")
+        if ($environment.Contains('Proxy')) {
+            $proxyProblem = Test-BeaconProxy -Value $environment.Proxy
+            if ($proxyProblem) { $problems.Add("${envPath}.Proxy: $proxyProblem") }
         }
 
         $groups = $environment['Groups']
