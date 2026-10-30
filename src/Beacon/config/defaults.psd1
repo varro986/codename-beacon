@@ -18,6 +18,8 @@
         WarnClasses  = @(4, 5)
         # Characters of the body shown in the detail when the answer is not OK.
         PreviewChars = 300
+        # Through a proxy, a plain http answer with one of these statuses is read as the proxy blocking.
+        ProxyRejectStatuses = @(403)
     }
     # Run folders go here, relative to the working directory; BEACON_RUNS overrides it.
     RunsFolder          = 'beacon-runs'
