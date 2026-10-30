@@ -38,7 +38,11 @@ Written first, by the orchestrator; no executor changes them.
   port check per port, ranges expanded (at most `MaxPortsPerTarget`, else an input error: Beacon does not scan); for
   each URL, TLS when it is `https` and then HTTP, run only if the URL's port opened (added to the ports when not
   listed). A failure marks every later check of the same target, or of the same URL, `SKIP` with the reason. Targets
-  run one after the other, in the order of the matrix sorted by group and name.
+  run one after the other, in the order of the matrix sorted by group and name. A port failure gets the route's last
+  answering hop appended to its detail.
+- **URL through a proxy** (`Resolve-BeaconProxy` says so): the URL's port check goes to the proxy (subject
+  `proxy <host>:<port>`), the direct TLS check is not run, and the HTTP check reports TLS errors met inside the
+  tunnel. Declared `Ports` are still checked directly.
 - **Shared helpers** (`Private/Common.ps1`, T0): `Get-BeaconConfig` (defaults, environment overrides),
   `New-BeaconCheckRecord -Check -Subject -Status -Detail -DurationMs [-Data]` (the record of the schema without
   `group` and `target`, which the chain adds), `New-BeaconInputError -Message` (an `ErrorRecord` with id
@@ -55,6 +59,7 @@ Written first, by the orchestrator; no executor changes them.
   | T5 | `Invoke-BeaconPortCheck -Address <string> -Port <int> -Config` | one record; `data.reason` (`refused`, `timeout`, `unreachable`), `data.sourceAddress` |
   | T6 | `Invoke-BeaconTlsCheck -HostName <string> -Address <string> -Port <int> -Config` | one record; `data.subject`, `data.issuer`, `data.notAfter`, `data.errors` |
   | T7 | `Invoke-BeaconHttpCheck -Url <string> [-MatrixProxy <string>] [-ExpectedStatus <int[]>] -Config` | one record; `data.status`, `data.proxy` (URL or `direct`), `data.location`, `data.expected` |
+  | T7 | `Resolve-BeaconProxy -Url <string> [-MatrixProxy <string>] [-Environment <IDictionary>]` | pure: the proxy URI for this URL, or `$null` for direct; `-Environment` defaults to the process environment |
 
 - **Matrix** (T2): `Read-BeaconMatrix -Path` returns the data file or throws a `BeaconInput` error naming the entry
   (for example `Environments.test.Groups.web.Targets[1]: Host is missing`). `Get-BeaconTargets -Matrix -Environment`
