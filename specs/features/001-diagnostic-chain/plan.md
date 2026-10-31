@@ -42,7 +42,13 @@ Written first, by the orchestrator; no executor changes them.
   answering hop appended to its detail.
 - **URL through a proxy** (`Resolve-BeaconProxy` says so): the URL's port check goes to the proxy (subject
   `proxy <host>:<port>`), the direct TLS check is not run, and the HTTP check reports TLS errors met inside the
-  tunnel. Declared `Ports` are still checked directly.
+  tunnel. Declared `Ports` are still checked directly. A DNS failure of the target skips only the direct checks: the
+  checks of URLs through a proxy still run.
+- **URL with another host** than the target: a DNS check on the URL's host (subject that host), then its port and
+  TLS checks go to that address; a DNS failure there skips that URL's direct checks.
+- **Proxy credentials**: the matrix rejects a `Proxy` or URL with user info; a proxy from the environment is shown and
+  stored without it.
+- **Run log** (ADR 0003): `run.log` next to `result.json`, one line per record as it is added, plus start and end.
 - **Shared helpers** (`Private/Common.ps1`, T0): `Get-BeaconConfig` (defaults, environment overrides),
   `New-BeaconCheckRecord -Check -Subject -Status -Detail -DurationMs [-Data]` (the record of the schema without
   `group` and `target`, which the chain adds), `New-BeaconInputError -Message` (an `ErrorRecord` with id
@@ -73,13 +79,20 @@ Written first, by the orchestrator; no executor changes them.
   `Write-BeaconReport -Result` (the coloured table on the console).
 - **Decisions of the owner (30/10)**: route TCP, then ICMP, then `SKIP`; proxy from the matrix, then the environment
   variables; TLS against the system trust store only, an own CA is an open question; exit codes 0 / 1 / 2; `GET` only,
-  redirects not followed, at most `Http.PreviewChars` of the body in the detail when not `OK`.
+  redirects not followed, at most `Http.PreviewChars` of the body in the detail when not `OK`. After the review
+  (30/10): a 403 on plain `http` through a proxy is a neutral `WARN`; through a proxy the target's DNS does not stop
+  the proxied checks; a URL with another host is resolved on its own.
 
 ## Risks
 
-- **Route on Linux**: `Test-Connection -Traceroute` uses ICMP; a TCP trace needs a TTL loop on a raw socket,
-  possibly with privileges. T1 tries both on Windows and Linux; if neither works unprivileged, the route reports
-  `SKIP` with the reason (the chain does not depend on it).
+- **Route on Linux**: spike `tests/spikes/Route.Spike.ps1`. Windows, not elevated: the TCP trace (`Socket.Ttl`)
+  never learns hop addresses (the TTL-expired ICMP goes to the kernel; a raw ICMP socket opens unprivileged but
+  received nothing) and a transparent middlebox can answer the SYN at TTL 1 (443 "connected" at hop 1), so it
+  cannot trace; the ICMP trace (`Ping` + `PingOptions(ttl)`) works unprivileged (`TtlExpired` with the hop address).
+  Chosen: ICMP trace on Windows. Linux not verified locally (WSL does not start here): .NET `Ping` on Linux uses an
+  unprivileged ICMP datagram socket, or falls back to the `ping` binary, and TTL-expired replies may not carry the
+  hop address (source knowledge, not verified): to verify in CI. If the ICMP trace yields no hop address, the route is
+  `SKIP` with `no unprivileged way to trace the route on this system` (the chain does not depend on it).
 - **TLS details**: `SslStream` validation callbacks differ slightly between Windows and Linux (chain errors); tests
   run on both in CI.
 - **NTLM** (ADR 0002): not needed here (no authentication in this feature); verified with the feature that brings
