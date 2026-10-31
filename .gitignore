@@ -27,3 +27,8 @@ desktop.ini
 .claude/*
 !.claude/agents/
 !.claude/settings.json
+
+# session resume files of the owner's machines (claude --resume ...)
+session.ps1
+covenant.ps1
+zion.ps1
