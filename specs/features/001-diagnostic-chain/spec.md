@@ -25,7 +25,12 @@ many networks drop trace packets while the service itself is reachable.
 5. **HTTP**: a `GET` gets an answer, directly or through the proxy; redirects are reported, not followed.
 
 The proxy is the environment's `Proxy` in the matrix; without it, `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` as curl
-reads them; otherwise direct.
+reads them; otherwise direct. Through a proxy it is the proxy that resolves the name: a URL through a proxy is
+checked even when the target's name does not resolve on the machine. A proxy's credentials are never shown nor
+stored; the matrix does not accept them.
+
+A URL whose host differs from the target's is checked against its own host: its name is resolved on its own, so the
+port, TLS and HTTP checks of that URL test the same server.
 
 ## The matrix
 
@@ -49,7 +54,8 @@ not part of this feature (IDEA-7).
 - Given a certificate that is expired, untrusted or for another name, when Beacon runs, then the outcome points to TLS
   and says which of these is wrong.
 - Given a proxy that blocks or rejects the request, when Beacon runs, then the outcome points to the proxy and shows
-  its answer.
+  its answer. For a plain `http` URL, where a refusal of the proxy and one of the service look the same, a 403 is a
+  warning that says either may have refused.
 - Given an HTTP check with no expected outcome, when it answers, then a timeout is a failure, 2xx and 3xx pass, 4xx and
   5xx are warnings.
 - Given an HTTP check whose expected outcome is a status (for example 401), when it answers with that status, then the
@@ -63,7 +69,9 @@ not part of this feature (IDEA-7).
 - Given any run, when it ends, then it leaves the result of ADR 0003 with the checks run, their outcome and timings,
   the name of the machine it ran on and, for every port, the source address used.
 - Given any run, when it ends, then the exit code is 0 when no check failed (warnings included), 1 when at least one
-  failed, 2 when the matrix or the parameters are not valid.
+  failed, 2 when the matrix or the parameters are not valid (missing ones included).
+- Given any run, when Beacon shows it on the console, then every detail is shown whole (long ones wrap), and each
+  target's outcome line says where it is blocked and why.
 
 ## Out of scope
 

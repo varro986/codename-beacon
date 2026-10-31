@@ -60,6 +60,19 @@ codename-beacon/
   writes data (for example a test file in a storage) is off by default, enabled only by its profile, never in
   production; it asks for confirmation and always removes what it wrote.
 
+## Usage
+
+```
+pwsh -NoProfile -File src/beacon.ps1 -MatrixPath ./matrix.psd1 -Environment test
+pwsh -NoProfile -File src/beacon.ps1 -Target portal.example.com -Port 443 -Url https://portal.example.com/health
+```
+
+- The matrix: [example](specs/features/001-diagnostic-chain/contracts/matrix.example.psd1); what each check does:
+  [spec](specs/features/001-diagnostic-chain/spec.md).
+- Every run writes `beacon-runs/<yyyyMMdd_HHmmss>/` with `result.json` and `run.log` under the working directory (`BEACON_RUNS` moves it)
+  and shows the table on the console; `-Quiet` hides the table.
+- Exit code: 0 no check failed, 1 at least one failed, 2 matrix or parameters not valid.
+
 ## Tests
 
 `pwsh -NoProfile -File cicd/run.ps1`: lint and Pester tests, the same steps as the remote CI

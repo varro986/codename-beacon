@@ -1,0 +1,9 @@
+{
+  "steps": [
+    {
+      "name": "PowerShell syntax of tools/",
+      "dir": ".",
+      "run": "foreach ($f in Get-ChildItem tools -Filter *.ps1) { $e = $null; [void][Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$e); if ($e) { $e; exit 1 } }"
+    }
+  ]
+}

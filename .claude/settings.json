@@ -1,5 +1,18 @@
 {
   "permissions": {
+    "allow": [
+      "PowerShell(pwsh -NoProfile -File *tools/*)",
+      "PowerShell(pwsh -NoProfile -File *cicd/*)",
+      "PowerShell(dotnet build*)",
+      "PowerShell(dotnet test*)",
+      "PowerShell(dotnet restore*)",
+      "Bash(pwsh -NoProfile -File *tools/*)",
+      "Bash(pwsh -NoProfile -File *cicd/*)",
+      "Bash(dotnet build*)",
+      "Bash(dotnet test*)",
+      "Bash(dotnet restore*)",
+      "PowerShell(Invoke-Pester *)"
+    ],
     "ask": [
       "Bash(git push *)",
       "Bash(git -C * push *)",

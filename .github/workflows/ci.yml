@@ -1,0 +1,16 @@
+name: ci
+on:
+  pull_request:
+    branches: [main]
+
+# read-only: the job only reads the repository
+permissions:
+  contents: read
+
+jobs:
+  steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # the same runner and steps as on the machine before every push (cicd/steps.json)
+      - run: pwsh -NoProfile -File tools/ci.ps1

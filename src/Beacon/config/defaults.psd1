@@ -19,6 +19,11 @@
         # Characters of the body shown in the detail when the answer is not OK.
         PreviewChars = 300
     }
+    # Console table: total width and the widest subject; longer details wrap, never cut.
+    Report              = @{
+        Width        = 120
+        SubjectChars = 40
+    }
     # Run folders go here, relative to the working directory; BEACON_RUNS overrides it.
     RunsFolder          = 'beacon-runs'
     RunsFolderEnv       = 'BEACON_RUNS'
